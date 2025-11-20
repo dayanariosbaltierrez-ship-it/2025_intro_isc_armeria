@@ -1,0 +1,204 @@
+body {
+    font-family: system-ui, sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+.container {
+    max-width: 800px;
+    margin: 20px auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+h1 {
+    text-align: center;
+    color: #0056b3;
+    margin-bottom: 25px;
+}
+/* --- Formulario --- */
+.form-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #e9ecef;
+}
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+.form-group label {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+.form-group input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+.form-group input:focus {
+    border-color: #007bff;
+    outline: none;
+}
+.form-buttons {
+    grid-column: 1 / -1; 
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* --- Botones --- */
+.btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease;
+}
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+.btn-danger:hover {
+    background-color: #c82333;
+}
+.btn-info {
+    background-color: #17a2b8;
+    color: white;
+}
+.btn-info:hover {
+    background-color: #138496;
+}
+
+/* --- Tabla --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+th {
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+}
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+tr:hover {
+    background-color: #e9ecef;
+}
+.actions-cell {
+    white-space: nowrap; 
+    display: flex;
+    gap: 5px; 
+}
+#emptyMessage {
+    text-align: center;
+    margin-top: 20px;
+    font-style: italic;
+    color: #666;
+}
+
+/* --- Responsive (Para móviles) --- */
+@media (max-width: 600px) {
+    .form-section {
+        grid-template-columns: 1fr;
+    }
+    .form-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .btn {
+        width: 100%;
+    }
+    /* Hace que la tabla se comporte como una lista en móviles */
+    table, thead, tbody, th, td, tr {
+        display: block;
+    }
+    thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    tr {
+        border: 1px solid #ccc;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        padding: 10px;
+        background-color: #fff;
+    }
+    td {
+        border: none;
+        position: relative;
+        padding-left: 50%;
+        text-align: right;
+    }
+    td:before {
+        position: absolute;
+        top: 50%;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        content: attr(data-label);
+        font-weight: bold;
+        text-align: left;
+        transform: translateY(-50%);
+    }
+
+
+
+#loan-form h2, #loansTable + h2 {
+    color: #17a2b8; /* Color info para préstamos */
+}
+
+
+ .status-returned {
+    background-color: #d4edda !important; /* Verde claro */
+}
+ .status-late {
+    background-color: #f8d7da !important; /* Rojo claro */
+    font-weight: bold;
+}
+ .status-on-time {
+    background-color: #fff3cd; /* Amarillo claro */
+}
+
+ .stock-low {
+    color: #dc3545; /* Rojo */
+    font-weight: bold;
+}
+ /* Asegura que los botones pequeños en la tabla de préstamos se vean bien */
+ .btn-sm {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+}
+}
