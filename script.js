@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', () => {
     // 1. DOM ELEMENTS
     const productNameInput = document.getElementById('productName');
@@ -8,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const inventoryTableBody = document.querySelector('#inventoryTable tbody');
     const emptyMessage = document.getElementById('emptyMessage');
     
-    // Loan Form Elements (NEW)
+    // Loan Form Elements (kept for compatibility but not used as UI anymore)
     const crudForm = document.getElementById('crud-form');
     const loanForm = document.getElementById('loan-form');
     const loanProductName = document.getElementById('loanProductName');
@@ -36,37 +37,65 @@ document.addEventListener('DOMContentLoaded', () => {
         productNameInput.focus();
     }
     
-    // Muestra el formulario de préstamo y esconde el CRUD principal
     function showLoanForm(itemId) {
+        // Now uses prompts to collect loan data instead of showing a separate form
         const item = inventory.find(i => i.id === itemId);
-        if (!item || item.availableStock === 0) {
+        if (!item) {
+            alert('Artículo no encontrado.');
+            return;
+        }
+        const maxAvailable = item.availableStock;
+        if (maxAvailable <= 0) {
             alert('No hay stock disponible para prestar este artículo.');
             return;
         }
 
-        loaningItemId = itemId;
-        loanProductName.textContent = item.name;
-        loanProductStock.textContent = item.availableStock;
-        loanQuantityInput.max = item.availableStock; // Set max for validation
+        // Prompt borrower name
+        const borrower = prompt('Nombre del prestatario:');
+        if (!borrower) {
+            alert('Préstamo cancelado (falta nombre del prestatario).');
+            return;
+        }
 
-        crudForm.style.display = 'none';
-        loanForm.style.display = 'grid';
-        
-        loanQuantityInput.value = 1;
-        borrowerNameInput.value = '';
-        dueDateInput.value = '';
-        borrowerNameInput.focus();
+        // Prompt quantity
+        let qtyStr = prompt(`Cantidad a prestar (Disponible: ${maxAvailable}):`, '1');
+        if (qtyStr === null) { alert('Préstamo cancelado.'); return; }
+        let qty = parseInt(qtyStr);
+        if (isNaN(qty) || qty <= 0 || qty > maxAvailable) {
+            alert('Cantidad inválida. Operación cancelada.');
+            return;
+        }
+
+        // Prompt due date (YYYY-MM-DD)
+        const defaultDue = new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10);
+        const dueDate = prompt('Fecha límite de devolución (YYYY-MM-DD):', defaultDue);
+        if (!dueDate) { alert('Préstamo cancelado (falta fecha límite).'); return; }
+
+        // Register loan
+        const newLoan = {
+            id: Date.now(),
+            productId: itemId,
+            productName: item.name,
+            borrower: borrower.trim(),
+            quantity: qty,
+            loanDate: new Date().toISOString().split('T')[0],
+            dueDate: dueDate,
+            isReturned: false
+        };
+        loans.push(newLoan);
+        item.availableStock -= qty;
+        alert(`Préstamo registrado: ${qty} x ${item.name} a ${borrower}`);
+        renderItems();
     }
     
-    // Esconde el formulario de préstamo y muestra el CRUD principal
     function hideLoanForm() {
+        // kept for compatibility; prompts version does not use the form UI
         loaningItemId = null;
         loanForm.style.display = 'none';
         crudForm.style.display = 'grid';
-        cancelEdit(); // Ensure CRUD form is in 'Add' mode
+        cancelEdit();
     }
 
-    // Valida que los campos del formulario principal tengan valores válidos
     function validateForm(name, quantity, price) {
         if (!name || name.trim() === '') {
             alert('El nombre del producto es requerido.');
@@ -88,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INVENTORY CRUD ---
 
-    // R: Renderiza la tabla de inventario
     function renderItems() {
         inventoryTableBody.innerHTML = '';
         
@@ -107,9 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td data-label="Stock Disponible" class="${stockDisplayClass}">${item.availableStock}</td>
                     <td data-label="Precio">$${item.price.toFixed(2)}</td>
                     <td data-label="Acciones" class="actions-cell">
-                        <button class="btn btn-info btn-sm" onclick="showLoanForm(${item.id})">Prestar</button>
-                        <button class="btn btn-primary btn-sm" onclick="editItem(${item.id})">Editar</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">Eliminar</button>
+                        <button class="btn btn-info btn-sm" onclick="window._showLoanPrompt(${item.id})">Prestar</button>
+                        <button class="btn btn-primary btn-sm" onclick="window._editPrompt(${item.id})">Editar</button>
+                        <button class="btn btn-danger btn-sm" onclick="window._deletePrompt(${item.id})">Eliminar</button>
                     </td>
                 `;
             });
@@ -117,178 +145,118 @@ document.addEventListener('DOMContentLoaded', () => {
         renderLoans(); // Always update loans when inventory changes
     }
 
-    // C: Agrega un nuevo producto
-    function addItem() {
-        const name = productNameInput.value.trim();
-        const totalStock = parseInt(productQuantityInput.value);
-        const price = parseFloat(productPriceInput.value);
+    // Add item via prompts (used by Add/Actualizar button)
+    function addItemWithPrompt() {
+        const name = prompt('Nombre del producto:');
+        if (name === null) { alert('Operación cancelada.'); return; }
+        const qtyStr = prompt('Cantidad total (número entero >= 0):', '1');
+        if (qtyStr === null) { alert('Operación cancelada.'); return; }
+        const priceStr = prompt('Precio (por ejemplo 199.99):', '0.00');
+        if (priceStr === null) { alert('Operación cancelada.'); return; }
 
+        const totalStock = parseInt(qtyStr);
+        const price = parseFloat(priceStr);
         if (!validateForm(name, totalStock, price)) return;
 
         const newItem = {
             id: Date.now(),
-            name,
+            name: name.trim(),
             totalStock, 
-            availableStock: totalStock, // Available stock equals total stock initially
+            availableStock: totalStock,
             price
         };
 
         inventory.push(newItem);
-        clearForm();
-        renderItems();
         alert('Producto agregado exitosamente.');
+        renderItems();
     }
 
-    // U: Carga datos para editar
+    // Edit item via prompts
     function editItem(id) {
         const itemToEdit = inventory.find(item => item.id === id);
-        if (itemToEdit) {
-            // Solo se puede editar el stock total si no hay préstamos pendientes
-            const loanedCount = itemToEdit.totalStock - itemToEdit.availableStock;
-            if (loanedCount > 0) {
-                 alert(`No puedes modificar el Stock Total (actualmente ${itemToEdit.totalStock}) porque hay ${loanedCount} unidades prestadas. Solo puedes editar Nombre y Precio.`);
-            }
-            
-            productNameInput.value = itemToEdit.name;
-            productQuantityInput.value = itemToEdit.totalStock; // Muestra el stock total
-            productPriceInput.value = itemToEdit.price;
-            productQuantityInput.disabled = (loanedCount > 0); // Deshabilitar edición de cantidad si está prestado
+        if (!itemToEdit) { alert('Artículo no encontrado.'); return; }
 
-            addUpdateBtn.textContent = 'Actualizar';
-            addUpdateBtn.classList.remove('btn-primary');
-            addUpdateBtn.classList.add('btn-info');
-            cancelBtn.style.display = 'inline-block';
-            editingItemId = id; 
-        }
-        hideLoanForm();
-    }
+        const loanedCount = itemToEdit.totalStock - itemToEdit.availableStock;
+        const cannotChangeStock = loanedCount > 0;
 
-    // U: Actualiza un producto existente
-    function updateItem() {
-        const name = productNameInput.value.trim();
-        const newTotalStock = parseInt(productQuantityInput.value);
-        const price = parseFloat(productPriceInput.value);
+        const newName = prompt('Nuevo nombre del producto:', itemToEdit.name);
+        if (newName === null) { alert('Edición cancelada.'); return; }
 
-        if (!validateForm(name, newTotalStock, price)) return;
-
-        const itemIndex = inventory.findIndex(item => item.id === editingItemId);
-        if (itemIndex !== -1) {
-            const item = inventory[itemIndex];
-            const loanedCount = item.totalStock - item.availableStock;
-            
-            // Validation if trying to reduce stock below the loaned amount
-            if (newTotalStock < loanedCount) {
-                alert(`Error: No puedes establecer un Stock Total menor a la cantidad prestada (${loanedCount}).`);
-                return;
-            }
-            
-            // Calculate change in stock and update availableStock
-            const stockDifference = newTotalStock - item.totalStock;
-            item.availableStock += stockDifference;
-            
-            // Update item properties
-            item.name = name;
-            item.totalStock = newTotalStock;
-            item.price = price;
-
-            alert('Producto actualizado exitosamente.');
+        let newTotalStock = itemToEdit.totalStock;
+        if (!cannotChangeStock) {
+            const stockStr = prompt('Nuevo Stock Total (entero):', String(itemToEdit.totalStock));
+            if (stockStr === null) { alert('Edición cancelada.'); return; }
+            newTotalStock = parseInt(stockStr);
+        } else {
+            // inform user stock can't be changed
+            alert(`No puedes modificar el Stock Total porque hay ${loanedCount} unidades prestadas.`);
         }
 
-        clearForm();
+        const priceStr = prompt('Nuevo precio:', String(itemToEdit.price.toFixed(2)));
+        if (priceStr === null) { alert('Edición cancelada.'); return; }
+        const newPrice = parseFloat(priceStr);
+
+        if (!validateForm(newName, newTotalStock, newPrice)) return;
+
+        // Validate not reducing below loaned count
+        if (newTotalStock < (itemToEdit.totalStock - itemToEdit.availableStock)) {
+            alert('No puedes reducir el stock por debajo de lo que está prestado.');
+            return;
+        }
+
+        const stockDiff = newTotalStock - itemToEdit.totalStock;
+        itemToEdit.availableStock += stockDiff;
+        itemToEdit.name = newName.trim();
+        itemToEdit.totalStock = newTotalStock;
+        itemToEdit.price = newPrice;
+
+        alert('Producto actualizado exitosamente.');
         renderItems();
-        cancelEdit(); 
     }
-    
-    // D: Elimina un producto
+
+    // Wrapper for prompt-based edit (exported to window)
+    function editItemPromptWrapper(id) {
+        editItem(id);
+    }
+
+    // Delete item via prompt confirmation
     function deleteItem(id) {
         const item = inventory.find(i => i.id === id);
-        if (item && item.availableStock !== item.totalStock) {
+        if (!item) { alert('Artículo no encontrado.'); return; }
+        if (item.availableStock !== item.totalStock) {
             alert('No se puede eliminar el producto porque tiene unidades prestadas. Regrese el stock primero.');
             return;
         }
-        
-        if (confirm('¿Estás seguro de que quieres eliminar este producto y todos sus datos?')) {
-            inventory = inventory.filter(i => i.id !== id);
-            // También elimina préstamos asociados (aunque deberían ser cero aquí)
-            loans = loans.filter(loan => loan.productId !== id); 
-            renderItems();
-            alert('Producto eliminado exitosamente.');
+        const confirmText = prompt(`Para confirmar la eliminación escribe "ELIMINAR". Producto: ${item.name}`);
+        if (confirmText !== 'ELIMINAR') {
+            alert('Eliminación cancelada.');
+            return;
         }
+        inventory = inventory.filter(i => i.id !== id);
+        loans = loans.filter(loan => loan.productId !== id);
+        alert('Producto eliminado exitosamente.');
+        renderItems();
     }
 
-    // Cancela el modo edición
-    function cancelEdit() {
-        clearForm();
-        productQuantityInput.disabled = false;
-        addUpdateBtn.textContent = 'Agregar Producto';
-        addUpdateBtn.classList.remove('btn-info');
-        addUpdateBtn.classList.add('btn-primary');
-        cancelBtn.style.display = 'none';
-        editingItemId = null; 
-    }
-
-    // --- LOAN ACTIONS ---
-
-    // C: Procesa y registra un nuevo préstamo
-    function processLoan() {
-        const productId = loaningItemId;
-        const item = inventory.find(i => i.id === productId);
-        
-        const quantity = parseInt(loanQuantityInput.value);
-        const borrower = borrowerNameInput.value.trim();
-        const dueDate = dueDateInput.value;
-        
-        // Basic validation
-        if (!borrower || !dueDate || isNaN(quantity) || quantity <= 0 || quantity > item.availableStock) {
-            alert('Por favor, complete todos los campos y asegúrese de que la cantidad sea válida y esté en stock.');
+    // Register return via prompt confirmation
+    function registerReturn(loanId) {
+        const loan = loans.find(l => l.id === loanId);
+        if (!loan) { alert('Préstamo no encontrado.'); return; }
+        const confirmText = prompt(`Confirme devolución escribiendo "SI". Préstamo: ${loan.productName} (${loan.quantity}) por ${loan.borrower}`);
+        if (!confirmText || confirmText.toUpperCase() !== 'SI') {
+            alert('Devolución cancelada.');
             return;
         }
 
-        // 1. Register the loan transaction
-        const newLoan = {
-            id: Date.now(),
-            productId: productId,
-            productName: item.name,
-            borrower: borrower,
-            quantity: quantity,
-            loanDate: new Date().toISOString().split('T')[0], // Today's date (YYYY-MM-DD)
-            dueDate: dueDate,
-            isReturned: false 
-        };
-        loans.push(newLoan);
-        
-        // 2. Update inventory stock
-        item.availableStock -= quantity;
-
-        alert(`Préstamo de ${quantity} x ${item.name} a ${borrower} registrado.`);
-        
-        hideLoanForm();
+        // Mark returned and update stock
+        loan.isReturned = true;
+        const item = inventory.find(i => i.id === loan.productId);
+        if (item) item.availableStock += loan.quantity;
+        alert('Devolución registrada correctamente.');
         renderItems();
     }
-    
-    // U: Marca un préstamo como devuelto y actualiza el stock
-    function registerReturn(loanId) {
-        if (!confirm('¿Confirmar la devolución de este ítem?')) return;
 
-        const loanIndex = loans.findIndex(l => l.id === loanId);
-        if (loanIndex !== -1) {
-            const loan = loans[loanIndex];
-            
-            // 1. Update loan status
-            loan.isReturned = true;
-            
-            // 2. Update inventory stock
-            const item = inventory.find(i => i.id === loan.productId);
-            if (item) {
-                item.availableStock += loan.quantity;
-            }
-
-            alert(`Devolución de ${loan.productName} registrada y stock actualizado.`);
-            renderItems(); // Re-render both tables
-        }
-    }
-
-    // R: Renderiza la tabla de préstamos (pendientes o no devueltos a tiempo)
+    // Renders loans table
     function renderLoans() {
         loansTableBody.innerHTML = '';
         const today = new Date().setHours(0, 0, 0, 0);
@@ -302,7 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let daysLate = 0;
 
             if (dueDate < today) {
-                // Cálculo de días de retraso
                 const diffTime = Math.abs(today - dueDate);
                 daysLate = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 statusText = `¡Vencido! (${daysLate} días de retraso)`;
@@ -321,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td data-label="Días Retraso">${daysLate > 0 ? daysLate : '-'}</td>
                 <td data-label="Estado">${statusText}</td>
                 <td data-label="Acciones" class="actions-cell">
-                    <button class="btn btn-primary btn-sm" onclick="registerReturn(${loan.id})">Marcar Devolución</button>
+                    <button class="btn btn-primary btn-sm" onclick="window._returnPrompt(${loan.id})">Marcar Devolución</button>
                 </td>
             `;
             hasLoanToShow = true;
@@ -330,30 +297,37 @@ document.addEventListener('DOMContentLoaded', () => {
         emptyLoanMessage.style.display = hasLoanToShow ? 'none' : 'block';
     }
 
-
     // --- EVENT LISTENERS ---
 
+    // Attach to Add/Actualizar button: now prompts for data
     addUpdateBtn.addEventListener('click', () => {
+        // If editingItemId is set, go through prompt update flow for that item
         if (editingItemId) {
-            updateItem();
+            editItem(editingItemId);
+            editingItemId = null;
+            cancelEdit();
         } else {
-            addItem();
+            addItemWithPrompt();
         }
     });
 
-    cancelBtn.addEventListener('click', cancelEdit);
-    processLoanBtn.addEventListener('click', processLoan); // NEW: Process loan
-    cancelLoanBtn.addEventListener('click', hideLoanForm); // NEW: Cancel loan form
+    cancelBtn.addEventListener('click', () => {
+        // Reset any editing state
+        editingItemId = null;
+        cancelEdit();
+        alert('Modo edición cancelado.');
+    });
+
+    // processLoanBtn and cancelLoanBtn kept for compatibility but not used
+    processLoanBtn.addEventListener('click', () => { alert('Este botón no se usa: las acciones de préstamo ahora se realizan vía prompts en los botones de la tabla.'); });
+    cancelLoanBtn.addEventListener('click', hideLoanForm);
 
     // Initial render
     renderItems();
 
-    // Export functions to global scope for HTML onclick
-    window.showLoanForm = showLoanForm;
-    window.editItem = editItem;
-    window.deleteItem = deleteItem;
-    window.registerReturn = registerReturn; // NEW
+    // Export prompt-based functions to global scope for onclick handlers in the table
+    window._showLoanPrompt = showLoanForm;
+    window._editPrompt = editItemPromptWrapper;
+    window._deletePrompt = deleteItem;
+    window._returnPrompt = registerReturn;
 });
-
-
-
